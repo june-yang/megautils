@@ -19,5 +19,6 @@ build
 AUTHORS
 ChangeLog
 bin/diskimage_builder
+.idea/*
 *.bak
 *.orig
