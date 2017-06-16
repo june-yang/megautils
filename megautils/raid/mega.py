@@ -16,9 +16,11 @@ import os
 import re
 import subprocess
 
+from oslo_log import log
 from megautils import exception
 
 MEGACLI_PATH = '/opt/MegaRAID/MegaCli/MegaCli64'
+LOG = log.getLogger()
 
 class Mega(object):
 
@@ -31,22 +33,21 @@ class Mega(object):
     def command(self, cmd):
         """
         Execute a megacli command
-        :param cmd: 
-        :return: 
+        :param cmd: command string 
+        :return: command output
         """
+        LOG.debug("Excuting megacli 'MegaCli64 %s' "% cmd)
         proc = subprocess.Popen("{0} {1} -NoLog".
                                 format(self.cli_path, cmd),
                                 shell=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
-        out, err = proc.communicate()
-        if isinstance(out, bytes):
-            out = out.decode()
-        if isinstance(err, bytes):
-            err = err.decode()
+        out = proc.stdout
 
         if proc.returncode:
-            ex = exception.MegaCLIError(err.rstrip())
+            err = proc.stderr
+            LOG.error(err)
+            ex = exception.MegaCLIError("MegaCli execute error!")
             ex.exitcode = proc.returncode
             raise ex
         return out

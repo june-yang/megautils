@@ -28,7 +28,7 @@ class Adapter(object):
         self.id = id
 
     def __flush__(self):
-        if not self.id:
+        if self.id == None:
             raise exception.InvalidParameterValue()
 
         cmd = '-AdpAllInfo -a%s' % self.id
@@ -51,8 +51,10 @@ class Adapter(object):
             if not multi_adapter and len(adapters) > 0:
                 return adapters[0]
             if line.startswith('Adapter #'):
+                if self.id != None:
+                    adapters.append(self.copy())
                 self.id = int(line[9:].strip())
-            if line.startswith('Product Name'):
+            elif line.startswith('Product Name'):
                 offset = line.find(':')
                 self.product_name = line[offset + 1:].strip()
             elif line.startswith('Serial No'):
@@ -97,7 +99,7 @@ class Adapter(object):
             elif line.startswith('Memory Size'):
                 offset = line.find(':')
                 self.memory_size = line[offset + 1:].strip()
-            adapters.append(self.copy())
+        adapters.append(self.copy())
 
         return adapters
 

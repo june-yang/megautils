@@ -24,7 +24,7 @@ class PhysicalDisk(object):
     def __init__(self, enclosure=None, slot=None, adapter=None):
         self.adapter = adapter
         self.slot = slot
-        self.id = 0
+        self.id = None
         self.enclosure = enclosure
         self.sequence_number = 0
         self.media_errors = 0
@@ -53,7 +53,7 @@ class PhysicalDisk(object):
         return Mega()
 
     def __flush__(self):
-        if not self.enclosure or not self.slot or not self.adapter:
+        if self.enclosure == None or self.slot == None or self.adapter == None:
             raise exception.InvalidParameterValue()
         
         cmd = '-PdInfo -PhysDrv [%s:%s] -a%s' % (self.enclosure, self.slot, self.adapter)
@@ -62,9 +62,9 @@ class PhysicalDisk(object):
 
     def get_physical_disks(self):
 
-        if not self.adapter:
+        if self.adapter == None:
             cmd = '-PdList -aALL'
-        elif self.enclosure and self.slot:
+        elif self.enclosure != None and self.slot != None:
             cmd = '-PdInfo -PhysDrv [%s:%s] -a%s' % (self.enclosure, self.slot, self.adapter)
         else:
             cmd = '-PdList -a%s' % self.adapter
@@ -75,10 +75,12 @@ class PhysicalDisk(object):
 
     def _handle(self, retstr, multi_pd=True):
         pds = []
-        for line in retstr.readlines:
+        for line in retstr.readlines():
             if line.startswith('Enclosure Device ID'):
                 if not multi_pd and len(pds) > 0:
                     return pds[0]
+                if self.id != None:
+                    pds.append(self.copy())
                 offset = line.find(':')
                 self.enclosure = int(line[offset + 1:].strip())
             if line.startswith('Slot Number'):
@@ -157,7 +159,7 @@ class PhysicalDisk(object):
                 offset = line.find(':')
                 self.media_type = line[offset + 1:].strip()
 
-            pds.append(copy.deepcopy(self))
+        pds.append(self.copy())
         return pds
 
     def copy(self):

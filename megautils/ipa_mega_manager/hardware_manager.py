@@ -17,9 +17,12 @@ from megautils.raid.adapter import Adapter
 from megautils.raid.virtual_driver import VirtualDriver
 from megautils.raid.virtual_driver import validate_raid_schema
 
-class MegaHarewareManager(hardware.GenericHardwareManager):
+class MegaHardwareManager(hardware.GenericHardwareManager):
 
-    HARDWARE_MANAGER_VERSION = "mega-1.0"
+    HARDWARE_MANAGER_VERSION = "4"
+
+    def evaluate_hardware_support(cls):
+        return hardware.HardwareSupport.SERVICE_PROVIDER
 
     def list_hardware_info(self):
         """Return full hardware inventory as a serializable dict.
@@ -46,18 +49,18 @@ class MegaHarewareManager(hardware.GenericHardwareManager):
         :return: disk schema
         """
         adapters = Adapter().get_adapters()
-        cache_virtual_drivers = []
+        cache_physical_drivers = []
         for adapter in adapters:
-            pds = adapter.get_virtual_drivers()
+            pds = adapter.get_physical_drivers()
             for pd in pds:
-                cache_virtual_drivers.append({
+                cache_physical_drivers.append({
                     'size': pd.raw_size,
                     'type': pd.pd_type,
                     'driver': '%s:%s' % (pd.enclosure, pd.slot),
                     'wwn': pd.wwn
                 })
                 
-        return cache_virtual_drivers
+        return cache_physical_drivers
 
     def get_clean_steps(self, node, ports):
         """Return the clean steps supported by this hardware manager.
@@ -93,7 +96,7 @@ class MegaHarewareManager(hardware.GenericHardwareManager):
         target_raid_config = node.get('target_raid_config', {}).copy()
         validate_raid_schema(target_raid_config)
         
-        for target_virtual_driver in target_raid_config:
+        for target_virtual_driver in target_raid_config['logical_disks']:
             adapter = target_virtual_driver.get('controller', 0)
             vd = VirtualDriver(adapter_id=adapter)
             vd.create(target_virtual_driver['raid_level'], target_virtual_driver['physical_disks'])
@@ -113,7 +116,7 @@ class MegaHarewareManager(hardware.GenericHardwareManager):
         adapters = Adapter().get_adapters()
         cache_virtual_drivers = []
         for adapter in adapters:
-            cache_virtual_drivers.append(adapter.get_virtual_drivers())
+            cache_virtual_drivers += adapter.get_virtual_drivers()
 
         for virtual_driver in cache_virtual_drivers:
             virtual_driver.destroy()

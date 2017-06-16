@@ -44,6 +44,16 @@ RAID_LEVEL_MIN_DISKS = {RAID_0: 1,
                         RAID_50: 6,
                         RAID_60: 8}
 
+RAID_LEVEL_INPUT_MAPPING = {
+    '0': '0',
+    '1': '1',
+    '5': '5',
+    '6': '6',
+    '1+0': '10',
+    '5+0': '50',
+    '6+0': '60'
+}
+
 class VirtualDriver(object):
 
     def __init__(self, adapter_id=None, id=None):
@@ -63,10 +73,10 @@ class VirtualDriver(object):
         self.encryption = ''
 
     def __flush__(self):
-        if not self.adapter or not self.id:
+        if self.adapter == None or self.id == None:
             raise exception.InvalidParameterValue()
 
-        cmd = '-LdInfo -L%i -a%i' % (self.adapter, self.id)
+        cmd = '-LdInfo -L%s -a%s' % (self.adapter, self.id)
         ret = self._get_client().command(cmd)
         self._handle(ret, multi_vd=False)
         
@@ -80,6 +90,8 @@ class VirtualDriver(object):
             if line.startswith('Virtual Drive'):
                 if not multi_vd and len(vds) > 0:
                     return vds[0]
+                if self.id != None:
+                    vds.append(self.copy())
                 delim = line.find('(')
                 offset = line.find(':')
                 self.id = int(line[offset + 1:delim].strip())
@@ -121,7 +133,7 @@ class VirtualDriver(object):
             elif line.startswith('Encryption'):
                 offset = line.find(':')
                 self.encryption = line[offset + 1:].strip()
-            vds.append(self.copy())
+        vds.append(self.copy())
 
         return vds
 
@@ -142,27 +154,27 @@ class VirtualDriver(object):
                 raise exception.InvalidDiskFormater(disk=disk)
 
         if raid_level in ['0', '1', '5', '6']:
-            cmd = '-CfgLdAdd -r%s [%s] -a%s' % (raid_level, ','.join(disks), self.adapter)
+            cmd = '-CfgLdAdd -r%s [%s] -a%s' % (RAID_LEVEL_INPUT_MAPPING.get(raid_level), ','.join(disks), self.adapter)
         elif raid_level == '1+0':
             arrays = ''
             for i in range(len(disks) / 2):
                 arrays += ' -Array%s[%s,%s]' % (i, disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (raid_level, arrays, self.adapter)
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
         elif raid_level == '5+0':
             arrays = ''
             for i in range(len(disks) / 3):
                 arrays += ' -Array%s[%s,%s,%s]' % (i, disks.pop(0), disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (raid_level, arrays, self.adapter)
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
         else:
             arrays = ''
             for i in range(len(disks) / 4):
                 arrays += ' -Array%s[%s,%s,%s,%s]' % (i, disks.pop(0), disks.pop(0), disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (raid_level, arrays, self.adapter)
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
 
 
         ret = self._get_client().command(cmd)
         self.id = None
-        for line in ret.readline:
+        for line in ret.readlines():
             offset = line.find('Created VD')
             if offset < 0:
                 continue
@@ -188,10 +200,10 @@ class VirtualDriver(object):
         Get all virtual drivers
         :return: 
         """
-        if not self.adapter:
+        if self.adapter == None:
             raise exception.InvalidParameterValue()
 
-        cmd = '-LdList  -a%i' % self.adapter
+        cmd = '-LdInfo -LALL -a%s' % self.adapter
         ret = self._get_client().command(cmd)
         return self._handle(ret, multi_vd=True)
 
