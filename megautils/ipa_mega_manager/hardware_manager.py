@@ -24,25 +24,6 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
     def evaluate_hardware_support(cls):
         return hardware.HardwareSupport.SERVICE_PROVIDER
 
-    def list_hardware_info(self):
-        """Return full hardware inventory as a serializable dict.
-
-        This inventory is sent to Ironic on lookup and to Inspector on
-        inspection.
-
-        :return: a dictionary representing inventory
-        """
-        hardware_info = {}
-        hardware_info['interfaces'] = self.list_network_interfaces()
-        hardware_info['cpu'] = self.get_cpus()
-        hardware_info['disks'] = hardware.list_all_block_devices()
-        hardware_info['physical_disks'] = self.list_all_physical_disks()
-        hardware_info['memory'] = self.get_memory()
-        hardware_info['bmc_address'] = self.get_bmc_address()
-        hardware_info['system_vendor'] = self.get_system_vendor_info()
-        hardware_info['boot'] = self.get_boot_info()
-        return hardware_info
-
     def list_all_physical_disks(self):
         """
         Get all physical disks to node for allocation
