@@ -76,7 +76,7 @@ class VirtualDriver(object):
         if self.adapter == None or self.id == None:
             raise exception.InvalidParameterValue()
 
-        cmd = '-LdInfo -L%s -a%s' % (self.adapter, self.id)
+        cmd = '-LdInfo -L%s -a%s' % (self.id, self.adapter)
         ret = self._get_client().command(cmd)
         self._handle(ret, multi_vd=False)
         
@@ -90,7 +90,7 @@ class VirtualDriver(object):
             if line.startswith('Virtual Drive'):
                 if not multi_vd and len(vds) > 0:
                     return vds[0]
-                if self.id != None:
+                if self.id is not None:
                     vds.append(self.copy())
                 delim = line.find('(')
                 offset = line.find(':')
@@ -133,7 +133,8 @@ class VirtualDriver(object):
             elif line.startswith('Encryption'):
                 offset = line.find(':')
                 self.encryption = line[offset + 1:].strip()
-        vds.append(self.copy())
+        if self.id is not None:
+            vds.append(self.copy())
 
         return vds
 

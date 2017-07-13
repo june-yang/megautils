@@ -79,7 +79,7 @@ class PhysicalDisk(object):
             if line.startswith('Enclosure Device ID'):
                 if not multi_pd and len(pds) > 0:
                     return pds[0]
-                if self.id != None:
+                if self.id is not None:
                     pds.append(self.copy())
                 offset = line.find(':')
                 self.enclosure = int(line[offset + 1:].strip())
@@ -158,8 +158,8 @@ class PhysicalDisk(object):
             elif line.startswith('Media Type'):
                 offset = line.find(':')
                 self.media_type = line[offset + 1:].strip()
-
-        pds.append(self.copy())
+        if self.id is not None:
+            pds.append(self.copy())
         return pds
 
     def copy(self):

@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo_log import log
+
 from ironic_python_agent import hardware
 from megautils.raid.adapter import Adapter
 from megautils.raid.virtual_driver import VirtualDriver
 from megautils.raid.virtual_driver import validate_raid_schema
+from megautils.raid.disk_allocator import allocate_disks
+
+LOG = log.getLogger(__name__)
 
 class MegaHardwareManager(hardware.GenericHardwareManager):
 
@@ -24,10 +29,27 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
     def evaluate_hardware_support(cls):
         return hardware.HardwareSupport.SERVICE_PROVIDER
 
+    def list_hardware_info(self):
+        """Return full hardware inventory as a serializable dict.
+        This inventory is sent to Ironic on lookup and to Inspector on
+        inspection.
+        :return: a dictionary representing inventory
+        """
+        hardware_info = {}
+        hardware_info['interfaces'] = self.list_network_interfaces()
+        hardware_info['cpu'] = self.get_cpus()
+        hardware_info['disks'] = hardware.list_all_block_devices()
+        hardware_info['physical_disks'] = self.list_all_physical_disks()
+        hardware_info['memory'] = self.get_memory()
+        hardware_info['bmc_address'] = self.get_bmc_address()
+        hardware_info['system_vendor'] = self.get_system_vendor_info()
+        hardware_info['boot'] = self.get_boot_info()
+        return hardware_info
+
     def list_all_physical_disks(self):
         """
         Get all physical disks to node for allocation
-        :return: disk schema
+        :return: physical disk dict
         """
         adapters = Adapter().get_adapters()
         cache_physical_drivers = []
@@ -37,10 +59,11 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
                 cache_physical_drivers.append({
                     'size': pd.raw_size,
                     'type': pd.pd_type,
-                    'driver': '%s:%s' % (pd.enclosure, pd.slot),
+                    'enclosure': pd.enclosure,
+                    'slot': pd.enclosure,
                     'wwn': pd.wwn
                 })
-                
+
         return cache_physical_drivers
 
     def get_clean_steps(self, node, ports):
@@ -73,13 +96,26 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
         :param ports: ironic port objects
         :return: current raid configuration schema
         """
+        LOG.info('creating configuration of node %s' % node['uuid'])
 
         target_raid_config = node.get('target_raid_config', {}).copy()
+
+        LOG.debug('node raid config: %s' % target_raid_config)
         validate_raid_schema(target_raid_config)
+
+        target_sorted_virtual_driver = (
+            sorted((x for x in target_raid_config['logical_disks']
+                    if x['size_gb'] != 'MAX'),
+                   reverse=True,
+                   key=lambda x: x['size_gb']) +
+        [x for x in target_raid_config['logical_disks']
+         if x['size_gb'] == 'MAX'])
         
-        for target_virtual_driver in target_raid_config['logical_disks']:
-            adapter = target_virtual_driver.get('controller', 0)
+        for target_virtual_driver in target_sorted_virtual_driver:
+            adapter = target_virtual_driver.get('adapter', 0)
             vd = VirtualDriver(adapter_id=adapter)
+            if 'physical_disks' not in target_virtual_driver:
+                allocate_disks(adapter, target_virtual_driver)
             vd.create(target_virtual_driver['raid_level'], target_virtual_driver['physical_disks'])
             if target_raid_config.get('is_root_volume', False):
                 vd.set_boot_able()
@@ -99,6 +135,8 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
         for adapter in adapters:
             cache_virtual_drivers += adapter.get_virtual_drivers()
 
+        LOG.info('deleting virtual drivers')
         for virtual_driver in cache_virtual_drivers:
+            LOG.debug('deleting virtual driver %s of adapter %s' % (virtual_driver.id, virtual_driver.adapter))
             virtual_driver.destroy()
         return 'raid clean execution success'

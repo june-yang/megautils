@@ -51,7 +51,7 @@ class Adapter(object):
             if not multi_adapter and len(adapters) > 0:
                 return adapters[0]
             if line.startswith('Adapter #'):
-                if self.id != None:
+                if self.id is not None:
                     adapters.append(self.copy())
                 self.id = int(line[9:].strip())
             elif line.startswith('Product Name'):
@@ -99,7 +99,8 @@ class Adapter(object):
             elif line.startswith('Memory Size'):
                 offset = line.find(':')
                 self.memory_size = line[offset + 1:].strip()
-        adapters.append(self.copy())
+        if self.id is not None:
+            adapters.append(self.copy())
 
         return adapters
 
