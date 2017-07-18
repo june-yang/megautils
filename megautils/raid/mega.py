@@ -22,6 +22,38 @@ from megautils import exception
 MEGACLI_PATH = '/opt/MegaRAID/MegaCli/MegaCli64'
 LOG = log.getLogger()
 
+RAID_0 = '0'
+RAID_1 = '1'
+RAID_10 = '1+0'
+RAID_5 = '5'
+RAID_6 = '6'
+RAID_50 = '5+0'
+RAID_60 = '6+0'
+
+RAID_LEVEL_MIN_DISKS = {RAID_0: 1,
+                        RAID_1: 2,
+                        RAID_5: 3,
+                        RAID_6: 4,
+                        RAID_10: 4,
+                        RAID_50: 6,
+                        RAID_60: 8}
+
+DISK_TYPE_HDD = 'hdd'
+DISK_TYPE_SSD = 'ssd'
+
+DISK_TYPE_MAP = {'Hard Disk Device': DISK_TYPE_HDD,
+                 'Solid State Device': DISK_TYPE_SSD}
+
+RAID_LEVEL_INPUT_MAPPING = {
+    '0': '0',
+    '1': '1',
+    '5': '5',
+    '6': '6',
+    '1+0': '10',
+    '5+0': '50',
+    '6+0': '60'
+}
+
 class Mega(object):
 
     def __init__(self, path=MEGACLI_PATH):

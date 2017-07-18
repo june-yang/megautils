@@ -21,38 +21,12 @@ import json
 import jsonschema
 from jsonschema import exceptions as json_schema_exc
 
-from megautils.raid.mega import Mega
+from megautils.raid import mega
 from megautils import exception
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 RAID_CONFIG_SCHEMA = os.path.join(CURRENT_DIR, "raid_config_schema.json")
 
-RAID_0 = '0'
-RAID_1 = '1'
-RAID_10 = '1+0'
-RAID_5 = '5'
-RAID_6 = '6'
-RAID_50 = '5+0'
-RAID_60 = '6+0'
-
-
-RAID_LEVEL_MIN_DISKS = {RAID_0: 1,
-                        RAID_1: 2,
-                        RAID_5: 3,
-                        RAID_6: 4,
-                        RAID_10: 4,
-                        RAID_50: 6,
-                        RAID_60: 8}
-
-RAID_LEVEL_INPUT_MAPPING = {
-    '0': '0',
-    '1': '1',
-    '5': '5',
-    '6': '6',
-    '1+0': '10',
-    '5+0': '50',
-    '6+0': '60'
-}
 
 class VirtualDriver(object):
 
@@ -82,7 +56,7 @@ class VirtualDriver(object):
         
 
     def _get_client(self):
-        return Mega()
+        return mega.Mega()
 
     def _handle(self, retstr, multi_vd=False):
         vds = []
@@ -154,23 +128,23 @@ class VirtualDriver(object):
             if not re.match(disk_formater, disk):
                 raise exception.InvalidDiskFormater(disk=disk)
 
-        if raid_level in ['0', '1', '5', '6']:
-            cmd = '-CfgLdAdd -r%s [%s] -a%s' % (RAID_LEVEL_INPUT_MAPPING.get(raid_level), ','.join(disks), self.adapter)
-        elif raid_level == '1+0':
+        if raid_level in [mega.RAID_0, mega.RAID_1, mega.RAID_5, mega.RAID_6]:
+            cmd = '-CfgLdAdd -r%s [%s] -a%s' % (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), ','.join(disks), self.adapter)
+        elif raid_level == mega.RAID_10:
             arrays = ''
             for i in range(len(disks) / 2):
                 arrays += ' -Array%s[%s,%s]' % (i, disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
-        elif raid_level == '5+0':
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
+        elif raid_level == mega.RAID_50:
             arrays = ''
             for i in range(len(disks) / 3):
                 arrays += ' -Array%s[%s,%s,%s]' % (i, disks.pop(0), disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
         else:
             arrays = ''
             for i in range(len(disks) / 4):
                 arrays += ' -Array%s[%s,%s,%s,%s]' % (i, disks.pop(0), disks.pop(0), disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
 
 
         ret = self._get_client().command(cmd)
@@ -245,7 +219,7 @@ def validate_raid_schema(raid_config):
         # 'physical_disks', validate that they have mentioned at least
         # minimum number of physical disks required for that RAID level.
         raid_level = logical_disk['raid_level']
-        min_disks_reqd = RAID_LEVEL_MIN_DISKS[raid_level]
+        min_disks_reqd = mega.RAID_LEVEL_MIN_DISKS[raid_level]
 
         no_of_disks_specified = None
         if 'number_of_physical_disks' in logical_disk:
