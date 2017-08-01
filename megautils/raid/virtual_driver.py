@@ -129,22 +129,31 @@ class VirtualDriver(object):
                 raise exception.InvalidDiskFormater(disk=disk)
 
         if raid_level in [mega.RAID_0, mega.RAID_1, mega.RAID_5, mega.RAID_6]:
-            cmd = '-CfgLdAdd -r%s [%s] -a%s' % (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), ','.join(disks), self.adapter)
+            cmd = '-CfgLdAdd -r%s [%s] -a%s' % \
+                  (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level),
+                   ','.join(disks), self.adapter)
         elif raid_level == mega.RAID_10:
             arrays = ''
             for i in range(len(disks) / 2):
                 arrays += ' -Array%s[%s,%s]' % (i, disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % \
+                  (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level),
+                   arrays, self.adapter)
         elif raid_level == mega.RAID_50:
             arrays = ''
             for i in range(len(disks) / 3):
-                arrays += ' -Array%s[%s,%s,%s]' % (i, disks.pop(0), disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
+                arrays += ' -Array%s[%s,%s,%s]' % \
+                          (i, disks.pop(0), disks.pop(0), disks.pop(0))
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % \
+                  (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level),
+                   arrays, self.adapter)
         else:
             arrays = ''
             for i in range(len(disks) / 4):
-                arrays += ' -Array%s[%s,%s,%s,%s]' % (i, disks.pop(0), disks.pop(0), disks.pop(0), disks.pop(0))
-            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' % (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
+                arrays += ' -Array%s[%s,%s,%s,%s]' % \
+                          (i, disks.pop(0), disks.pop(0), disks.pop(0), disks.pop(0))
+            cmd = '-CfgSpanAdd -r%s %s Direct RA WB -a%s' %\
+                  (mega.RAID_LEVEL_INPUT_MAPPING.get(raid_level), arrays, self.adapter)
 
 
         ret = self._get_client().command(cmd)

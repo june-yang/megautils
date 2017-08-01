@@ -29,19 +29,26 @@ def allocate_disks(adapter_id, virtual_driver_config):
     :return: 
     """
     adapter = Adapter(id=adapter_id)
-    size_gb = 1 if virtual_driver_config['size_gb'] == 'MAX' else virtual_driver_config['size_gb']
+    size_gb = 1 if virtual_driver_config['size_gb'] == 'MAX' \
+        else virtual_driver_config['size_gb']
     raid_level = virtual_driver_config['raid_level']
     number_of_physical_disks = virtual_driver_config.get(
         'number_of_physical_disks', mega.RAID_LEVEL_MIN_DISKS[raid_level])
     disk_type = virtual_driver_config.get('disk_type', None)
     avail_physical_disks = [x for x in adapter.get_physical_drivers()
-                            if 'Online' not in x.firmware_state and x.raw_size >= size_gb]
+                            if 'Online' not in x.firmware_state
+                            and x.raw_size >= size_gb]
 
     # hdd and ssd should be split manually cause a raid must stand with same disk type
-    avail_ssd_physical_disks = [x for x in avail_physical_disks if _get_disk_type(x.media_type) == mega.DISK_TYPE_SSD]
-    avail_hdd_physical_disks = [x for x in avail_physical_disks if _get_disk_type(x.media_type) == mega.DISK_TYPE_HDD]
+    avail_ssd_physical_disks = [x for x in avail_physical_disks
+                                if _get_disk_type(x.media_type)
+                                    == mega.DISK_TYPE_SSD]
+    avail_hdd_physical_disks = [x for x in avail_physical_disks
+                                if _get_disk_type(x.media_type)
+                                    == mega.DISK_TYPE_HDD]
 
-    LOG.info('there are %d ssd and %d hdd available' % (len(avail_ssd_physical_disks), len(avail_hdd_physical_disks)))
+    LOG.info('there are %d ssd and %d hdd available' %
+             (len(avail_ssd_physical_disks), len(avail_hdd_physical_disks)))
 
     target_physical_disks = None
     if (not disk_type and virtual_driver_config.get('is_root_volume', False))\
@@ -62,9 +69,11 @@ def allocate_disks(adapter_id, virtual_driver_config):
         target_physical_disks = avail_hdd_physical_disks
     if not target_physical_disks:
         raise PhysicalDisksNotFoundError()
-    virtual_driver_config['physical_disks'] = ["%s:%s" % (x.enclosure, x.slot)
-                                       for x in target_physical_disks][:number_of_physical_disks]
-    LOG.debug('physical driver raid schema created: %s' % virtual_driver_config['physical_disks'])
+    virtual_driver_config['physical_disks'] = \
+        ["%s:%s" % (x.enclosure, x.slot)
+            for x in target_physical_disks][:number_of_physical_disks]
+    LOG.debug('physical driver raid schema created: %s' %
+              virtual_driver_config['physical_disks'])
 
 
 def _get_disk_type(interface):

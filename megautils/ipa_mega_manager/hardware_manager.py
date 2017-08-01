@@ -116,7 +116,8 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
             vd = VirtualDriver(adapter_id=adapter)
             if 'physical_disks' not in target_virtual_driver:
                 allocate_disks(adapter, target_virtual_driver)
-            vd.create(target_virtual_driver['raid_level'], target_virtual_driver['physical_disks'])
+            vd.create(target_virtual_driver['raid_level'],
+                      target_virtual_driver['physical_disks'])
             if target_raid_config.get('is_root_volume', False):
                 vd.set_boot_able()
 
@@ -137,6 +138,7 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
 
         LOG.info('deleting virtual drivers')
         for virtual_driver in cache_virtual_drivers:
-            LOG.debug('deleting virtual driver %s of adapter %s' % (virtual_driver.id, virtual_driver.adapter))
+            LOG.debug('deleting virtual driver %s of adapter %s' %
+                      (virtual_driver.id, virtual_driver.adapter))
             virtual_driver.destroy()
         return 'raid clean execution success'
