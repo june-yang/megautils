@@ -25,9 +25,11 @@ LOG = log.getLogger(__name__)
 class MegaHardwareManager(hardware.GenericHardwareManager):
 
     HARDWARE_MANAGER_VERSION = "4"
+    LSI_RAID_PROVIDER = 4
 
     def evaluate_hardware_support(cls):
-        return hardware.HardwareSupport.SERVICE_PROVIDER
+        adapters = Adapter().get_adapters()
+        return cls.LSI_RAID_PROVIDER if adapters else hardware.HardwareSupport.NONE
 
     def list_hardware_info(self):
         """Return full hardware inventory as a serializable dict.
