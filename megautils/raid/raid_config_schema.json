@@ -60,6 +60,11 @@
                         "type": "array",
                         "items": { "type": "string" },
                         "description": "The physical disks to use for this logical disk. Optional"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Virtual disk count"
                     }
                 },
                 "required": ["raid_level", "size_gb"],

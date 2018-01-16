@@ -22,8 +22,8 @@ from megautils.raid.disk_allocator import allocate_disks
 
 LOG = log.getLogger(__name__)
 
-class MegaHardwareManager(hardware.GenericHardwareManager):
 
+class MegaHardwareManager(hardware.GenericHardwareManager):
     HARDWARE_MANAGER_VERSION = "4"
     LSI_RAID_PROVIDER = 4
 
@@ -110,21 +110,23 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
                     if x['size_gb'] != 'MAX'),
                    reverse=True,
                    key=lambda x: x['size_gb']) +
-        [x for x in target_raid_config['logical_disks']
-         if x['size_gb'] == 'MAX'])
-        
+            [x for x in target_raid_config['logical_disks']
+             if x['size_gb'] == 'MAX'])
+
         for target_virtual_driver in target_sorted_virtual_driver:
-            adapter = target_virtual_driver.get('adapter', 0)
+            adapter = target_virtual_driver.get('controller', 0)
             vd = VirtualDriver(adapter_id=adapter)
             if 'physical_disks' not in target_virtual_driver:
                 allocate_disks(adapter, target_virtual_driver)
-            vd.create(target_virtual_driver['raid_level'],
-                      target_virtual_driver['physical_disks'])
-            if target_raid_config.get('is_root_volume', False):
+            count = target_virtual_driver.get('count', 1)
+            for i in range(1, count):
+                vd.create(target_virtual_driver['raid_level'],
+                          target_virtual_driver['physical_disks'])
+            if target_raid_config.get('is_root_volume', False)\
+                    and count == 1:
                 vd.set_boot_able()
 
         return target_raid_config
-
 
     def delete_configuration(self, node, ports):
         """
