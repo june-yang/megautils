@@ -1,1 +1,5 @@
 [gerrit]
+host=gerrit.cmss.com
+port=29418
+project=EC_Openstack/megautils.git
+defaultbranch=master

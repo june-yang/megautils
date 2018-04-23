@@ -175,7 +175,7 @@ class VirtualDriver(object):
         """
         self.__flush__()
 
-        cmd = '-CfgLdDel -L%s -a%s' % (self.id, self.adapter)
+        cmd = '-CfgLdDel -L%s -Force -a%s' % (self.id, self.adapter)
         self._get_client().command(cmd)
         self.id = None
 

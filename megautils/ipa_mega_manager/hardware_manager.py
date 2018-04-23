@@ -116,10 +116,10 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
         for target_virtual_driver in target_sorted_virtual_driver:
             adapter = target_virtual_driver.get('controller', 0)
             vd = VirtualDriver(adapter_id=adapter)
-            if 'physical_disks' not in target_virtual_driver:
-                allocate_disks(adapter, target_virtual_driver)
             count = target_virtual_driver.get('count', 1)
-            for i in range(1, count):
+            for i in range(0, count):
+                if 'physical_disks' not in target_virtual_driver:
+                    allocate_disks(adapter, target_virtual_driver)
                 vd.create(target_virtual_driver['raid_level'],
                           target_virtual_driver['physical_disks'])
             if target_raid_config.get('is_root_volume', False)\
