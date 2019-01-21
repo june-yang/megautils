@@ -16,9 +16,12 @@ from oslo_log import log
 
 from ironic_python_agent import hardware
 from megautils.raid.adapter import Adapter
+from megautils.raid_ircu.adapter import Adapter as SASAdapter
 from megautils.raid.virtual_driver import VirtualDriver
+from megautils.raid_ircu.virtual_driver import VirtualDriver as SASVirtualDriver
 from megautils.raid.virtual_driver import validate_raid_schema
 from megautils.raid.disk_allocator import allocate_disks
+from megautils.raid_ircu.disk_allocator import allocate_disks as sas_allocate_disks
 
 LOG = log.getLogger(__name__)
 
@@ -146,3 +149,89 @@ class MegaHardwareManager(hardware.GenericHardwareManager):
                       (virtual_driver.id, virtual_driver.adapter))
             virtual_driver.destroy()
         return 'raid clean execution success'
+
+
+class MegaSAS3HardwareManager(MegaHardwareManager):
+    HARDWARE_MANAGER_VERSION = "5"
+    LSI_RAID_PROVIDER = 5
+
+    def evaluate_hardware_support(cls):
+        adapters = SASAdapter().get_adapters()
+        return cls.LSI_RAID_PROVIDER if adapters else hardware.HardwareSupport.NONE
+
+    def list_all_physical_disks(self):
+        """
+        Get all physical disks to node for allocation
+        :return: physical disk dict
+        """
+        adapters = SASAdapter().get_adapters()
+        cache_physical_drivers = []
+        for adapter in adapters:
+            pds = adapter.get_physical_drivers()
+            for pd in pds:
+                cache_physical_drivers.append({
+                    'size': pd.size,
+                    'type': pd.drive_type,
+                    'enclosure': pd.enclosure,
+                    'slot': pd.slot,
+                    'wwn': pd.guid
+                })
+
+        return cache_physical_drivers
+
+    def create_configuration(self, node, ports):
+        """
+        Create a Raid configuration to the baremetal node
+        :param node: ironic node object
+        :param ports: ironic port objects
+        :return: current raid configuration schema
+        """
+        LOG.info('creating configuration of node %s' % node['uuid'])
+
+        target_raid_config = node.get('target_raid_config', {}).copy()
+
+        LOG.debug('node raid config: %s' % target_raid_config)
+        validate_raid_schema(target_raid_config)
+
+        target_sorted_virtual_driver = (
+            sorted((x for x in target_raid_config['logical_disks']
+                    if x['size_gb'] != 'MAX'),
+                   reverse=True,
+                   key=lambda x: x['size_gb']) +
+            [x for x in target_raid_config['logical_disks']
+             if x['size_gb'] == 'MAX'])
+
+        for target_virtual_driver in target_sorted_virtual_driver:
+            adapter = target_virtual_driver.get('controller', 0)
+            vd = SASVirtualDriver(adapter_id=adapter)
+            count = target_virtual_driver.get('count', 1)
+            for i in range(0, count):
+                if 'physical_disks' not in target_virtual_driver:
+                    sas_allocate_disks(adapter, target_virtual_driver)
+                vd.create(target_virtual_driver['raid_level'],
+                          target_virtual_driver['physical_disks'])
+            if target_raid_config.get('is_root_volume', False)\
+                    and count == 1:
+                vd.set_boot_able()
+
+        return target_raid_config
+
+    def delete_configuration(self, node, ports):
+        """
+        Delete all Raid configuration to the baremetal node
+        :param node: ironic node object
+        :param ports: ironic port objects
+        :return: execute messages
+        """
+        adapters = SASAdapter().get_adapters()
+        cache_virtual_drivers = []
+        for adapter in adapters:
+            cache_virtual_drivers += adapter.get_virtual_drivers()
+
+        LOG.info('deleting virtual drivers')
+        for virtual_driver in cache_virtual_drivers:
+            LOG.debug('deleting virtual driver %s of adapter %s' %
+                      (virtual_driver.id, virtual_driver.adapter))
+            virtual_driver.destroy()
+        return 'raid clean execution success'
+

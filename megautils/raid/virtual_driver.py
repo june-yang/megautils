@@ -194,10 +194,10 @@ class VirtualDriver(object):
     def set_boot_able(self):
         """
         Set current virtual driver bootable
-        :return: 
+        :return:
         """
         self.__flush__()
-        
+
         cmd = '-AdpBootDrive -set -L%s -a%s' % (self.id, self.adapter)
         self._get_client().command(cmd)
 
